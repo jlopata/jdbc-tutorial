@@ -1,13 +1,17 @@
 package com.acme.order;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.List;
-
-import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 import com.acme.order.pizza.PizzaOrder;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Repository
@@ -34,7 +38,15 @@ public class JdbcOrderRepository implements OrderRepository {
 
 	@Override
 	public PizzaOrder get(String pizzaOrderId) {
-		// TODO Auto-generated method stub
+		try (Connection conn = DriverManager.getConnection(url, user, password)) {
+			try(PreparedStatement stmt = conn.prepareStatement("Select * from order_t where order_t.id = ?")){
+				stmt.setString(0, pizzaOrderId);
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+		}
 		return null;
 	}
 
