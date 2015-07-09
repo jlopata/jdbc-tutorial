@@ -1,12 +1,13 @@
 package com.acme.order;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.List;
 
-import org.springframework.context.annotation.Primary;
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.acme.order.pizza.PizzaOrder;
@@ -15,19 +16,29 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Repository
-@Primary
+@Configuration
+@ComponentScan(basePackages = "com.acme")
 public class JdbcOrderRepository implements OrderRepository {
 
-	private final String url = "jdbc:mysql://localhost:3306/pizza-tutorial";
+	@Autowired
+	private BasicDataSource dataSource;
 
-	private final String user = "dbuser";
+	private JdbcTemplate jdbcTemplate;
 
-	private final String password = "dbpass";
-
+    @Autowired
+    public void setDataSource(BasicDataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
+	
 	@Override
 	public String save(PizzaOrder order) {
-		// TODO Auto-generated method stub
-		return null;
+		
+		return this.jdbcTemplate.queryForObject("insert into order_t values(?, ?, ?, ? ,?)", String.class,
+				order.getId(),
+				order.getState() ,
+				order.getPizzaType() ,
+				order.getEstimatedTime() ,
+				order.getFinishTime());
 	}
 
 	@Override
@@ -38,28 +49,30 @@ public class JdbcOrderRepository implements OrderRepository {
 
 	@Override
 	public PizzaOrder get(String pizzaOrderId) {
-		try (Connection conn = DriverManager.getConnection(url, user, password)) {
-			try(PreparedStatement stmt = conn.prepareStatement("Select * from order_t where order_t.id = ?")){
-				stmt.setString(0, pizzaOrderId);
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
-		} catch (SQLException e1) {
-			e1.printStackTrace();
-		}
-		return null;
+		return this.jdbcTemplate.queryForObject("select * from order_t where order_t.id = ?", new Object[]{pizzaOrderId} , PizzaOrder.class);
 	}
 
 	@Override
 	public List<PizzaOrder> findAll() {
-		// TODO Auto-generated method stub
-		return null;
+		List<PizzaOrder> list = this.jdbcTemplate.queryForList("Select * from order_t", PizzaOrder.class);
+		return list;
 	}
 
 	@Override
 	public List<PizzaOrder> findByOrderStatus(OrderStatus orderStatus) {
-		// TODO Auto-generated method stub
-		return null;
+		return this.jdbcTemplate.queryForList("select * from order_t where order_t.status = ?", PizzaOrder.class , orderStatus);
 	}
+
+	@Bean
+	public BasicDataSource createDataSource() {
+		BasicDataSource ds = new BasicDataSource();
+		ds.setDriverClassName("com.mysql.jdbc.Driver");
+		ds.setUrl("jdbc:mysql://localhost:3306/pizza-tutorial");
+		ds.setUsername("dbuser");
+		ds.setPassword("dbpass");
+		return ds;
+	}
+	
+	
 
 }
